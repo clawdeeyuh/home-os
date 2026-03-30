@@ -3,6 +3,7 @@
 // Full source for the Home OS app.
 
 import { useState } from "react";
+import MondayDashboard from "@/components/MondayDashboard";
 
 // ─── Design tokens ────────────────────────────────────────────────
 const C = {
@@ -194,7 +195,7 @@ function CheckinPanel({ state, setState }) {
   const [usVal,      setUsVal]      = useState("");
   const [kidsVal,    setKidsVal]    = useState("");
   const [homeVal,    setHomeVal]    = useState("");
-  const [intentVal,  setIntentVal]  = useState("");
+  const [intentVal,  setIntentVal]  = useState(""); // kept for compat, unused
   const [usIdeas,    setUsIdeas]    = useState([]);
   const [kidsIdeas,  setKidsIdeas]  = useState([]);
   const [loadingUs,  setLoadingUs]  = useState(false);
@@ -218,45 +219,59 @@ function CheckinPanel({ state, setState }) {
   };
 
   const saveCheckin = () => {
-    if (!intentVal.trim()) return;
     const entry = {
-      date:   new Date().toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }),
-      us:     usVal,
-      kids:   kidsVal,
-      home:   homeVal,
-      intent: intentVal.trim(),
+      date: new Date().toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }),
+      us:   usVal,
+      kids: kidsVal,
+      home: homeVal,
     };
-    const next = { ...state, checkins: [entry, ...state.checkins], ciDone: true, intent: intentVal.trim() };
+    const next = { ...state, checkins: [entry, ...state.checkins], ciDone: true };
     setState(next); LS.set(next);
   };
 
   const reset = () => {
     setStep(0);
-    setUsVal(""); setKidsVal(""); setHomeVal(""); setIntentVal("");
+    setUsVal(""); setKidsVal(""); setHomeVal("");
     setUsCat(""); setKidsCat("");
     setUsIdeas([]); setKidsIdeas([]);
-    const next = { ...state, ciDone: false, intent: "" };
+    const next = { ...state, ciDone: false };
     setState(next); LS.set(next);
   };
 
   // ── Done state ──
   if (state.ciDone) {
+    const latest = state.checkins[0];
+    const bars = [
+      { key: "us",   label: "Partnership", color: C.accent, value: latest?.us },
+      { key: "kids", label: "Kids",        color: C.green,  value: latest?.kids },
+      { key: "home", label: "Home",        color: C.blue,   value: latest?.home },
+    ];
     return (
       <div>
-        <div style={{ textAlign: "center", padding: "36px 20px" }}>
+        <div style={{ textAlign: "center", padding: "36px 20px 22px" }}>
           <div style={{ fontSize: 36, marginBottom: 14 }}>✦</div>
           <h3 style={{ fontFamily: "Georgia, serif", fontSize: 26, fontWeight: 500, marginBottom: 8 }}>Check-in logged.</h3>
           <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, maxWidth: 360, margin: "0 auto 22px" }}>
             You've done the scan. Let it work in the background. Come back Friday to close the loop.
           </p>
-          <div style={{
-            background: C.warm, borderLeft: `3px solid ${C.accent}`,
-            padding: "14px 16px", borderRadius: "0 3px 3px 0",
-            margin: "0 auto 22px", maxWidth: 420, textAlign: "left",
-          }}>
-            <MonoLabel>This week's commitment</MonoLabel>
-            <div style={{ fontSize: 15, fontWeight: 500 }}>{state.intent}</div>
-          </div>
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
+          {bars.map(({ key, label, color, value }) => value ? (
+            <div key={key} style={{
+              display: "flex", gap: 14, background: C.warm,
+              borderLeft: `3px solid ${color}`, borderRadius: "0 3px 3px 0",
+              padding: "13px 16px", marginBottom: 10,
+            }}>
+              <div style={{ flex: 1 }}>
+                <MonoLabel>{label}</MonoLabel>
+                <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4 }}>{value}</div>
+              </div>
+            </div>
+          ) : null)}
+        </div>
+
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
           <Btn variant="ghost" onClick={reset}>Start a new check-in</Btn>
         </div>
 
@@ -264,11 +279,11 @@ function CheckinPanel({ state, setState }) {
           <div style={{ borderTop: `1px solid ${C.soft}`, paddingTop: 24 }}>
             <MonoLabel>Past check-ins</MonoLabel>
             {state.checkins.slice(0, 5).map((e, i) => (
-              <div key={i} style={{ padding: "13px 0", borderBottom: i < 4 ? `1px solid ${C.warm}` : "none" }}>
+              <div key={i} style={{ padding: "13px 0", borderBottom: i < Math.min(state.checkins.length, 5) - 1 ? `1px solid ${C.warm}` : "none" }}>
                 <div style={{ fontFamily: "monospace", fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6 }}>{e.date}</div>
-                <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 5 }}>{e.intent}</div>
                 {e.us   && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}><Tag type="us"   />{e.us.substring(0,80)}{e.us.length>80?"…":""}</div>}
                 {e.kids && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}><Tag type="kids" />{e.kids.substring(0,80)}{e.kids.length>80?"…":""}</div>}
+                {e.home && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}><Tag type="home" />{e.home.substring(0,80)}{e.home.length>80?"…":""}</div>}
               </div>
             ))}
           </div>
@@ -280,14 +295,14 @@ function CheckinPanel({ state, setState }) {
   // ── Progress dots ──
   const Dots = () => (
     <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 26 }}>
-      {[0,1,2,3].map(i => (
+      {[0,1,2].map(i => (
         <div key={i} style={{
           width: 8, height: 8, borderRadius: "50%", transition: "background 0.2s",
           background: i < step ? C.accent : i === step ? C.accent + "77" : C.soft,
         }} />
       ))}
       <span style={{ fontFamily: "monospace", fontSize: 10, color: C.muted, marginLeft: 6, textTransform: "uppercase", letterSpacing: 1.5 }}>
-        Step {step + 1} of 4
+        Step {step + 1} of 3
       </span>
     </div>
   );
@@ -376,32 +391,7 @@ function CheckinPanel({ state, setState }) {
           </Card>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Btn variant="ghost" onClick={() => setStep(1)}>← Back</Btn>
-            <Btn onClick={() => setStep(3)}>Next →</Btn>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3 — Commitment */}
-      {step === 3 && (
-        <div>
-          <Card>
-            <MonoLabel>This week's single commitment</MonoLabel>
-            <p style={{ fontSize: 15, fontWeight: 500, marginBottom: 6 }}>If you do only one intentional thing this week — not functional, not reactive — what is it?</p>
-            <p style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>One thing. Specific. Doable.</p>
-            <input
-              value={intentVal}
-              onChange={e => setIntentVal(e.target.value)}
-              placeholder="e.g. Take one of the boys on a solo errand and actually ask him things..."
-              style={{
-                width: "100%", background: C.warm, border: `1px solid ${C.soft}`,
-                borderRadius: 3, padding: "11px 14px", fontFamily: "sans-serif",
-                fontSize: 14, color: C.ink,
-              }}
-            />
-          </Card>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <Btn variant="ghost" onClick={() => setStep(2)}>← Back</Btn>
-            <Btn onClick={saveCheckin} disabled={!intentVal.trim()}>Save check-in ✓</Btn>
+            <Btn onClick={saveCheckin}>Save check-in ✓</Btn>
           </div>
         </div>
       )}
@@ -607,7 +597,7 @@ function ReflectPanel({ state, setState }) {
               </div>
               {r.us   && <div style={{ fontSize: 13, marginBottom: 4 }}><Tag type="us"   />{r.us.substring(0,100)}{r.us.length>100?"…":""}</div>}
               {r.kids && <div style={{ fontSize: 13, marginBottom: 4 }}><Tag type="kids" />{r.kids.substring(0,100)}{r.kids.length>100?"…":""}</div>}
-              {r.carry && <div style={{ fontSize: 12, color: C.muted, marginTop: 6, fontStyle: "italic" }}>→ {r.carry.substring(0,100)}{r.carry.length>100?"…":""}</div>}
+              {r.carry && <div style={{ fontSize: 12, color: C.muted, marginTop: 6, fontStyle: "italic", lineHeight: 1.5 }}>→ {r.carry}</div>}
             </div>
           ))}
         </div>
@@ -618,7 +608,7 @@ function ReflectPanel({ state, setState }) {
 
 // ─── Root ─────────────────────────────────────────────────────────
 export default function HomeOS() {
-  const [tab,   setTab]   = useState("checkin");
+  const [tab,   setTab]   = useState("monday");
   const [state, setState] = useState(() => LS.get() || defaultState);
 
   const now  = new Date();
@@ -628,7 +618,8 @@ export default function HomeOS() {
   const months= ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   const tabs = [
-    { id: "checkin", label: "Weekly Check-in" },
+    { id: "monday",  label: "Monday"           },
+    { id: "checkin", label: "Weekly Check-in"  },
     { id: "bank",    label: "Initiative Bank"  },
     { id: "reflect", label: "Friday Signal"    },
   ];
@@ -667,6 +658,7 @@ export default function HomeOS() {
         </div>
 
         {/* Panels */}
+        {tab === "monday"  && <MondayDashboard onGoToCheckin={() => setTab("checkin")} />}
         {tab === "checkin" && <CheckinPanel state={state} setState={setState} />}
         {tab === "bank"    && <BankPanel    state={state} setState={setState} />}
         {tab === "reflect" && <ReflectPanel state={state} setState={setState} />}
