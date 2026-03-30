@@ -1,5 +1,4 @@
 import "./globals.css";
-import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 
 export const metadata = {
   title: "Home OS",
@@ -9,9 +8,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        <SessionProviderWrapper>{children}</SessionProviderWrapper>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

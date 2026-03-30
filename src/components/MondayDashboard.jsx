@@ -1,6 +1,20 @@
 "use client";
-import { useSession, signIn, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
+
+function useGoogleSession() {
+  const [data,   setData]   = useState(null);
+  const [status, setStatus] = useState("loading");
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.authenticated) { setData(d); setStatus("authenticated"); }
+        else setStatus("unauthenticated");
+      })
+      .catch(() => setStatus("unauthenticated"));
+  }, []);
+  return { data, status };
+}
 
 // ─── Design tokens (matches HomeOS) ───────────────────────────────
 const C = {
@@ -446,7 +460,7 @@ function ConnectGoogle() {
         Connect Google to see your calendar here<br />and sync tasks to Google Tasks.
       </div>
       <button
-        onClick={() => signIn("google")}
+        onClick={() => { window.location.href = "/api/auth/signin/google"; }}
         style={{
           padding: "10px 24px", background: C.accent, color: "white",
           border: "none", borderRadius: 3, fontFamily: "sans-serif",
@@ -461,7 +475,7 @@ function ConnectGoogle() {
 
 // ─── Root ─────────────────────────────────────────────────────────
 export default function MondayDashboard({ onGoToCheckin }) {
-  const { data: session, status } = useSession();
+  const { data: session, status } = useGoogleSession();
   const isAuth = status === "authenticated";
 
   const now    = new Date();
@@ -501,7 +515,7 @@ export default function MondayDashboard({ onGoToCheckin }) {
             <DripMatrix hasGoogle={true} />
             <div style={{ marginTop: 20, textAlign: "right" }}>
               <button
-                onClick={() => signOut()}
+                onClick={() => { window.location.href = "/api/auth/signout"; }}
                 style={{
                   fontSize: 11, color: C.muted, background: "none",
                   border: "none", cursor: "pointer", fontFamily: "sans-serif",
